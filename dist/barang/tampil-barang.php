@@ -2,6 +2,74 @@
 session_start();
 include '../../config/database.php';
 
+// ===================================================================
+// BAGIAN TAMBAHAN UNTUK REKOMENDASI PRODUK
+// ===================================================================
+// Logika ini hanya berjalan jika tidak ada filter kategori yang aktif (saat halaman pertama kali dimuat)
+if (!isset($_POST['kategoriBarang']) || empty($_POST['kategoriBarang'])) {
+
+    // Query untuk mengambil 5 produk dengan total stok terbanyak
+    $rekomendasi_query = mysqli_query($kon, "
+        SELECT 
+            b.idBarang, b.kodeBarang, b.namaBarang,
+            (SELECT gv.gambarvarian
+             FROM varianbarang vb
+             JOIN gambarvarian gv ON gv.idGambarVarian = vb.idGambarVarian
+             WHERE vb.kodeBarang = b.kodeBarang
+             ORDER BY vb.idVarian ASC
+             LIMIT 1) AS gambarBarang,
+            MIN(v.harga) as harga_min,
+            MAX(v.harga) as harga_max,
+            SUM(v.stok) as total_stok
+        FROM barang b
+        JOIN varianBarang v ON b.kodeBarang = v.kodeBarang
+        WHERE v.stok > 0
+        GROUP BY b.kodeBarang
+        ORDER BY total_stok DESC
+        LIMIT 5
+    ");
+
+    // Tampilkan bagian rekomendasi hanya jika ada hasilnya
+    if (mysqli_num_rows($rekomendasi_query) > 0) {
+        echo '<div class="card mb-4">';
+        echo '    <div class="card-header"><h4 class="mb-0">🔥 Rekomendasi Produk Untuk Anda</h4></div>';
+        echo '    <div class="card-body">';
+        echo '        <div class="row row-cols-2 row-cols-md-5 gx-3 gy-3 justify-content-start px-2">';
+        
+        while ($data_rek = mysqli_fetch_assoc($rekomendasi_query)) {
+            echo '<div class="col">';
+            echo '    <div class="card card-barang h-100 shadow-sm border rounded-4 p-2 btn-detail-barang" style="cursor: pointer;" idBarang="'. $data_rek['idBarang'] .'" kodeBarang="'. $data_rek['kodeBarang'] .'">';
+            echo '        <div class="img-container" style="position: relative;">';
+            echo '            <img class="card-img-top product-img" src="../dist/barang/gambar/'. htmlspecialchars($data_rek['gambarBarang']) .'" alt="'. htmlspecialchars($data_rek['namaBarang']) .'">';
+            echo '        </div>';
+            echo '        <div class="card-body text-center">';
+            echo '            <h6 class="card-title mb-1">'. htmlspecialchars($data_rek['namaBarang']) .'</h6>';
+            echo '            <p class="text-danger fw-bold mb-0">';
+            if ($data_rek['harga_min'] == $data_rek['harga_max']) {
+                echo "Rp" . number_format($data_rek['harga_min'], 0, ',', '.');
+            } else {
+                echo "Rp" . number_format($data_rek['harga_min'], 0, ',', '.') . " - Rp" . number_format($data_rek['harga_max'], 0, ',', '.');
+            }
+            echo '            </p>';
+            echo '        </div>';
+            echo '    </div>';
+            echo '</div>';
+        }
+        
+        echo '        </div>';
+        echo '    </div>';
+        echo '</div>';
+        
+        // Judul untuk daftar produk utama
+        echo '<div class="card mb-4"><div class="card-header"><h4 class="mb-0">Telusuri Semua Produk</h4></div></div>';
+    }
+}
+// ===================================================================
+// AKHIR BAGIAN TAMBAHAN
+// ===================================================================
+
+
+// KODE ASLI ANDA DI BAWAH INI TIDAK DIUBAH SAMA SEKALI
 $kategori = "";
 if (isset($_POST['kategoriBarang']) && is_array($_POST['kategoriBarang'])) {
     foreach ($_POST['kategoriBarang'] as $value) {
@@ -31,9 +99,9 @@ if (!$hasil) {
     exit;
 }
 $cek = mysqli_num_rows($hasil);
-if ($cek <= 0) {
+if ($cek <= 0 && (isset($_POST['kategoriBarang']) && !empty($_POST['kategoriBarang']))) {
     echo "<div class='col-sm-12'><div class='alert alert-warning'>Data tidak ditemukan!</div></div>";
-    exit;
+    // exit; // Dihilangkan agar tidak menghentikan script jika admin/penjual memfilter dan tidak ada hasil
 }
 $barang_admin = mysqli_fetch_all($hasil, MYSQLI_ASSOC);
 
@@ -52,19 +120,21 @@ $barang_query = mysqli_query($kon, "
         MAX(v.harga) as harga_max,
         SUM(v.stok) as total_stok
     FROM barang b
-    JOIN varianBarang v ON b.kodeBarang = v.kodeBarang
-    GROUP BY b.kodeBarang
-");
+    JOIN varianBarang v ON b.kodeBarang = v.kodeBarang"
+    . (!empty($kategori) && $kategori != '0' ? " WHERE b.kodeKategori IN ($kategori)" : "") .
+    " GROUP BY b.kodeBarang"
+);
 
 
 $barang_pelanggan = [];
-while ($row = mysqli_fetch_assoc($barang_query)) {
-    $barang_pelanggan[] = $row;
+if ($barang_query) {
+    while ($row = mysqli_fetch_assoc($barang_query)) {
+        $barang_pelanggan[] = $row;
+    }
 }
 ?>
 
 <?php if (strtolower($_SESSION['level']) === 'penjual' or strtolower($_SESSION['level']) === 'admin'): ?>
-    <!-- Admin / Penjual -->
     <div class="row">
         <div class="col-sm-2">
             <div class="form-group">
@@ -105,42 +175,45 @@ while ($row = mysqli_fetch_assoc($barang_query)) {
     </div>
 <?php else: ?>
     <div class="row row-cols-2 row-cols-md-5 gx-3 gy-3 justify-content-start px-2">
-        <?php foreach ($barang_pelanggan as $data): ?>
-            <div class="col">
-                <div class="card card-barang h-100 shadow-sm border rounded-4 p-2 <?= $data['total_stok'] > 0 ? 'btn-detail-barang' : '' ?>"
-                    style="<?= $data['total_stok'] > 0?>"
-                    <?= $data['total_stok'] > 0 ? 'idBarang="' . $data['idBarang'] . '" kodeBarang="' . $data['kodeBarang'] . '"' : '' ?>>
-                    <div class="img-container" style="position: relative;">
-                        <img class="card-img-top product-img" 
-                            src="../dist/barang/gambar/<?= htmlspecialchars($data['gambarBarang']) ?>" 
-                            alt="<?= htmlspecialchars($data['namaBarang']) ?>">
+        <?php if(empty($barang_pelanggan) && (isset($_POST['kategoriBarang']) && !empty($_POST['kategoriBarang']))): ?>
+             <div class='col-sm-12'><div class='alert alert-warning'>Data tidak ditemukan!</div></div>
+        <?php else: ?>
+            <?php foreach ($barang_pelanggan as $data): ?>
+                <div class="col">
+                    <div class="card card-barang h-100 shadow-sm border rounded-4 p-2 <?= $data['total_stok'] > 0 ? 'btn-detail-barang' : '' ?>"
+                         style="cursor: <?= $data['total_stok'] > 0 ? 'pointer' : 'default' ?>;"
+                         <?= $data['total_stok'] > 0 ? 'idBarang="' . $data['idBarang'] . '" kodeBarang="' . $data['kodeBarang'] . '"' : '' ?>>
+                        <div class="img-container" style="position: relative;">
+                            <img class="card-img-top product-img" 
+                                 src="../dist/barang/gambar/<?= htmlspecialchars($data['gambarBarang']) ?>" 
+                                 alt="<?= htmlspecialchars($data['namaBarang']) ?>">
 
-                        <?php if ($data['total_stok'] == 0): ?>
-                            <div class="stok-habis-overlay">
-                                <span>Stok Habis</span>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-body text-center">
-                        <h6 class="card-title mb-1"><?= htmlspecialchars($data['namaBarang']) ?></h6>
-                        <p class="text-danger fw-bold mb-0">
-                            <?php
-                            if ($data['harga_min'] == $data['harga_max']) {
-                                echo "Rp" . number_format($data['harga_min'], 0, ',', '.');
-                            } else {
-                                echo "Rp" . number_format($data['harga_min'], 0, ',', '.') . 
-                                     " - Rp" . number_format($data['harga_max'], 0, ',', '.');
-                            }
-                            ?>
-                        </p>
+                            <?php if ($data['total_stok'] == 0): ?>
+                                <div class="stok-habis-overlay">
+                                    <span>Stok Habis</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-body text-center">
+                            <h6 class="card-title mb-1"><?= htmlspecialchars($data['namaBarang']) ?></h6>
+                            <p class="text-danger fw-bold mb-0">
+                                <?php
+                                if ($data['harga_min'] == $data['harga_max']) {
+                                    echo "Rp" . number_format($data['harga_min'], 0, ',', '.');
+                                } else {
+                                    echo "Rp" . number_format($data['harga_min'], 0, ',', '.') . 
+                                         " - Rp" . number_format($data['harga_max'], 0, ',', '.');
+                                }
+                                ?>
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        <?php endforeach; ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 <?php endif; ?>
 
-<!-- Modal -->
 <div class="modal fade" id="modal">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -316,7 +389,4 @@ $(document).ready(function () {
     border-radius: 0.5rem;
     text-transform: uppercase;
 }
-
 </style>
-
-

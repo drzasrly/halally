@@ -1,35 +1,37 @@
-<?php 
-  session_start();
-  if (!isset($_SESSION["idPengguna"])){
-      header("Location: tampilanAwal.php");
-      exit();
-  } else {
+<?php
+session_start();
+if (!isset($_SESSION['kodePengguna'])) {
+    header("Location: tampilanAwal.php");
+    exit();
+} else {
     include '../config/database.php';
-    $idPengguna = $_SESSION["idPengguna"];
-    $username = $_SESSION["username"];
-    $hasil = mysqli_query($kon, "select username from pengguna where idPengguna=$idPengguna");
-    $data = mysqli_fetch_array($hasil); 
+    $kodePengguna = $_SESSION['kodePengguna'];
+    $username = $_SESSION['username'];
+    $hasil = mysqli_query($kon, "SELECT username FROM pengguna WHERE kodePengguna='$kodePengguna'");
+    $data = mysqli_fetch_array($hasil);
     $username_db = $data['username'];
-    if ($username != $username_db){
+    
+    if ($username != $username_db) {
         session_unset();
         session_destroy();
         header("Location: login.php");
         exit();
     }
-  }
+}
 
-  // Ambil jumlah keranjang jika yang login adalah Pelanggan
-  $jumlah_keranjang = 0;
-  if ($_SESSION['level']=='Pelanggan' || $_SESSION['level']=='pelanggan') {
-    $idPengguna = $_SESSION["idPengguna"];
-    $query_keranjang = mysqli_query($kon, "select count(idKeranjang) as total from keranjang where idPengguna=$idPengguna");
-    $data_keranjang = mysqli_fetch_array($query_keranjang);
-    $jumlah_keranjang = $data_keranjang['total'];
-  }
-  
-  // Ambil profil aplikasi
-  $hasil_aplikasi = mysqli_query($kon,"select * from profil_aplikasi order by nama_aplikasi desc limit 1");
-  $data_aplikasi = mysqli_fetch_array($hasil_aplikasi); 
+$jumlah_keranjang = 0;
+if (isset($_SESSION['level']) && ($_SESSION['level'] == 'Pelanggan' || $_SESSION['level'] == 'pelanggan')) {
+    // Pastikan idPengguna ada di session sebelum digunakan
+    if (isset($_SESSION["idPengguna"])){
+        $idPengguna = $_SESSION["idPengguna"];
+        $query_keranjang = mysqli_query($kon, "SELECT COUNT(idKeranjang) AS total FROM keranjang WHERE idPengguna=$idPengguna");
+        $data_keranjang = mysqli_fetch_array($query_keranjang);
+        $jumlah_keranjang = $data_keranjang['total'];
+    }
+}
+// Ambil profil aplikasi
+$hasil_aplikasi = mysqli_query($kon, "SELECT * FROM profil_aplikasi ORDER BY nama_aplikasi DESC LIMIT 1");
+$data_aplikasi = mysqli_fetch_array($hasil_aplikasi);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,10 +50,53 @@
         <script src="../src/plugin/datatables/dataTables.bootstrap4.min.js"></script>
     </head>
     
-    <body class="sb-nav-fixed">
+    <body class="<?php echo ($_SESSION['level'] == 'Pelanggan' || $_SESSION['level'] == 'pelanggan') ? '' : 'sb-nav-fixed'; ?>">
         <nav class="sb-topnav navbar navbar-expand navbar-dark" style="background-color:rgb(66, 138, 155);">
             <a class="navbar-brand pl-3" href="index.php?page=dashboard"><?php echo htmlspecialchars($data_aplikasi['nama_aplikasi']);?></a>
-            <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
+            
+            <?php if ($_SESSION['level']!='Pelanggan' && $_SESSION['level']!='pelanggan'): ?>
+                <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['level']) && ($_SESSION['level']=='Pelanggan' || $_SESSION['level']=='pelanggan')): ?>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link mx-2" href="index.php?page=dashboard"><i class="fas fa-home mr-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link mx-2" href="index.php?page=barang"><i class="fas fa-store mr-1"></i>Katalog Barang</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link mx-2" href="index.php?page=chat"><i class="fas fa-comments mr-1"></i>Chat</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link mx-2" href="index.php?page=keranjang">
+                            <i class="fas fa-shopping-cart mr-1"></i>Keranjang
+                            <?php if ($jumlah_keranjang > 0): ?>
+                                <span id="keranjang-badge" class="badge badge-danger"><?php echo $jumlah_keranjang; ?></span>
+                            <?php else: ?>
+                                <span id="keranjang-badge" class="badge badge-danger" style="display: none;">0</span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link mx-2" href="index.php?page=riwayat-kebaikan"><i class="fas fa-history mr-1"></i>Riwayat</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle mx-2" href="#" id="navbarDropdownKebaikan" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-star mr-1"></i>Program Kebaikan
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdownKebaikan">
+                            <a class="dropdown-item" href="index.php?page=donasi"><i class="fas fa-donate text-primary fa-fw mr-2"></i>Donasi</a>
+                            <a class="dropdown-item" href="index.php?page=zakat"><i class="fas fa-hand-holding-heart text-success fa-fw mr-2"></i>Zakat</a>
+                            <a class="dropdown-item" href="index.php?page=wakaf"><i class="fas fa-mosque text-info fa-fw mr-2"></i>Wakaf</a>
+                            <a class="dropdown-item" href="index.php?page=ocr-halal/ocr.php"><i class="fas fa-camera text-warning fa-fw mr-2"></i>Scan Halal/Haram</a>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <?php endif; ?>
             <form class="d-none d-md-inline-block form-inline ml-auto mr-0 mr-md-3 my-2 my-md-0"></form>
             <ul class="navbar-nav ml-auto ml-md-0">
                 <li class="nav-item dropdown">
@@ -65,11 +110,12 @@
         </nav>
 
         <div id="layoutSidenav">
+            <?php if (isset($_SESSION['level']) && $_SESSION['level']!='Pelanggan' && $_SESSION['level']!='pelanggan'): ?>
             <div id="layoutSidenav_nav">
                 <nav class="sb-sidenav accordion sb-sidenav-light" id="sidenavAccordion">
                     <div class="sb-sidenav-menu">
 
-                        <?php if ($_SESSION['level']=='Admin' || $_SESSION['level']=='admin'): ?>
+                        <?php if (isset($_SESSION['level']) && ($_SESSION['level']=='Admin' || $_SESSION['level']=='admin')): ?>
                         <div class="nav">
                             <div class="sb-sidenav-menu-heading">Menu Utama</div>
                             <a class="nav-link" href="index.php?page=dashboard">
@@ -151,7 +197,7 @@
                         </div>
                         <?php endif; ?>
 
-                        <?php if ($_SESSION['level']=='Penjual' || $_SESSION['level']=='penjual'): ?>
+                        <?php if (isset($_SESSION['level']) && ($_SESSION['level']=='Penjual' || $_SESSION['level']=='penjual')): ?>
                         <div class="nav">
                             <div class="sb-sidenav-menu-heading">Menu</div>
                             <a class="nav-link" href="index.php?page=dashboard">
@@ -178,43 +224,6 @@
                         </div>
                         <?php endif; ?>
 
-                        <?php if ($_SESSION['level']=='Pelanggan' || $_SESSION['level']=='pelanggan'): ?>
-                        <div class="nav">
-                            <div class="sb-sidenav-menu-heading">Belanja & Transaksi</div>
-                            <a class="nav-link" href="index.php?page=dashboard">
-                                <div class="sb-nav-link-icon"><i class="fas fa-home"></i></div>Dashboard
-                            </a>
-                            <a class="nav-link" href="index.php?page=barang">
-                                <div class="sb-nav-link-icon"><i class="fas fa-book"></i></div>Katalog Barang
-                            </a>
-                            <a class="nav-link" href="index.php?page=chat">
-                                <div class="sb-nav-link-icon"><i class="fas fa-comments"></i></div>Chat
-                            </a>
-                            <a class="nav-link" href="index.php?page=keranjang">
-                                <div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>
-                                Keranjang
-                                <?php if ($jumlah_keranjang > 0): ?>
-                                    <span id="keranjang-badge" class="badge badge-danger ml-2"><?php echo $jumlah_keranjang; ?></span>
-                                <?php else: ?>
-                                    <span id="keranjang-badge" class="badge badge-danger ml-2" style="display: none;">0</span>
-                                <?php endif; ?>
-                            </a>
-                            <a class="nav-link" href="index.php?page=riwayat-kebaikan">
-                                <div class="sb-nav-link-icon"><i class="fas fa-history"></i></div>Riwayat Transaksi
-                            </a>
-
-                            <div class="sb-sidenav-menu-heading">Program Kebaikan</div>
-                            <a class="nav-link" href="index.php?page=donasi">
-                                <div class="sb-nav-link-icon"><i class="fas fa-donate text-primary"></i></div>Donasi
-                            </a>
-                            <a class="nav-link" href="index.php?page=zakat">
-                                <div class="sb-nav-link-icon"><i class="fas fa-hand-holding-heart text-success"></i></div>Zakat
-                            </a>
-                            <a class="nav-link" href="index.php?page=wakaf">
-                                <div class="sb-nav-link-icon"><i class="fas fa-mosque text-info"></i></div>Wakaf
-                            </a>
-                        </div>
-                        <?php endif; ?>
                     </div>
 
                     <div class="sb-sidenav-footer">
@@ -223,11 +232,13 @@
                     </div>
                 </nav>
             </div>
+            <?php endif; ?>
             <div id="layoutSidenav_content">
                 <main>
                     <div class="container-fluid px-4">
-                    <?php 
-                        if(isset($_GET['page'])){
+ 
+                        <?php
+                        if (isset($_GET['page'])) {
                             $page = $_GET['page'];
                             switch ($page) {
                                 // HALAMAN UTAMA
@@ -279,6 +290,8 @@
                                 case 'laporan-pelanggan': include "laporan/pelanggan/laporan-pelanggan.php"; break;
                                 case 'aplikasi': include "aplikasi/index.php"; break;
                                 case 'chat': include "chat/index.php"; break;
+                                case 'ocr-halal/ocr.php': include "ocr-halal/ocr.php"; break;
+                                case 'ocr-halal/ocr-proses.php': include "ocr-halal/ocr-proses.php"; break;
                                 
                                 // JIKA HALAMAN TIDAK DITEMUKAN
                                 default: echo "<div class='mt-4'><center><h3>Maaf. Halaman tidak ditemukan!</h3></center></div>"; break;
@@ -286,13 +299,14 @@
                         } else {
                             include "dashboard/index.php";
                         }
-                    ?>
+                        ?>
+
                     </div>
                 </main>
                 <footer class="py-4 bg-light mt-auto">
                     <div class="container-fluid">
                         <div class="d-flex align-items-center justify-content-between small">
-                        <div class="text-muted">Copyright &copy; <?php echo htmlspecialchars($data_aplikasi['nama_aplikasi']);?> <?php echo date('Y');?></div>
+                            <div class="text-muted">Copyright &copy; <?php echo htmlspecialchars($data_aplikasi['nama_aplikasi']);?> <?php echo date('Y');?></div>
                         </div>
                     </div>
                 </footer>
@@ -311,7 +325,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Keluar Aplikasi</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body">Apakah anda yakin ingin keluar?</div>
                 <div class="modal-footer">
