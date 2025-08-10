@@ -36,6 +36,29 @@ class BarangDetailCarouselDenganThumbnail {
         return mysqli_fetch_all($result, MYSQLI_ASSOC);
     }
 
+    protected function getTotalTerjual($kodeBarang) {
+        $kodeBarang = mysqli_real_escape_string($this->kon, $kodeBarang);
+        $sql = "SELECT SUM(dt.jumlah) as total
+                FROM detail_transaksi dt
+                INNER JOIN transaksi t ON t.kodeTransaksi = dt.kodeTransaksi
+                INNER JOIN varianbarang vb ON vb.idVarian = dt.idVarian
+                WHERE vb.kodeBarang = '$kodeBarang' AND dt.status = 3";
+        $result = mysqli_query($this->kon, $sql);
+        $row = mysqli_fetch_assoc($result);
+        return $row['total'] ?? 0;
+    }
+
+    protected function getReviewBarang($kodeBarang) {
+        $kodeBarang = mysqli_real_escape_string($this->kon, $kodeBarang);
+        $sql = "SELECT r.*, u.username AS nama
+                FROM ulasan_produk r
+                INNER JOIN pengguna u ON u.idPengguna = r.idPengguna
+                WHERE r.kodeBarang = '$kodeBarang'
+                ORDER BY r.tanggal_ulasan DESC";
+        $result = mysqli_query($this->kon, $sql);
+        return mysqli_fetch_all($result, MYSQLI_ASSOC);
+    }
+
     public function tampilkanDetail($idBarang) {
         $barang = $this->getBarang($idBarang);
         if (!$barang) {
@@ -43,10 +66,13 @@ class BarangDetailCarouselDenganThumbnail {
             return;
         }
 
+        $totalTerjual = $this->getTotalTerjual($barang['kodeBarang']);
         $gambarUtamaList = $this->getGambarUtama($barang['kodeBarang']);
         $varians = $this->getVarianBarang($barang['kodeBarang']);
 
-        echo "<h4>".htmlspecialchars($barang['namaBarang'])." <small class='text-muted'>(".htmlspecialchars($barang['namaKategori']).")</small></h4>";
+        echo "<h4>".htmlspecialchars($barang['namaBarang'])." 
+              <small class='text-muted'>(".htmlspecialchars($barang['namaKategori']).")</small></h4>";
+        echo "<p><strong>Total Terjual:</strong> {$totalTerjual} pcs</p>";
 
         $semuaGambar = [];
         $gambarVarianUnik = [];
@@ -133,6 +159,9 @@ class BarangDetailCarouselDenganThumbnail {
                 echo "<p><strong>Stok:</strong> <span id='info-stok-{$index}'>".htmlspecialchars($varian['stok'])."</span></p>";
                 echo "<p><strong>Harga:</strong> Rp <span id='info-harga-{$index}'>" . number_format($varian['harga'], 0, ',', '.') . "</span></p>";
 
+                // Tombol Chat Penjual
+                echo "<p><a href='https://wa.me/6281234567890?text=Halo,%20saya%20ingin%20bertanya%20tentang%20produk%20{$barang['namaBarang']}' target='_blank' class='btn btn-info btn-sm'><i class='fas fa-comments'></i> Chat Penjual</a></p>";
+
                 if (isset($_SESSION['level']) && strtolower($_SESSION['level']) === 'pelanggan' && $varian['stok'] > 0) {
                     echo "<div>";
                         echo "<button type='button' class='btn btn-primary btn-sm tambah-keranjang-btn' data-idvarian='{$varian['idVarian']}' data-kodebarang='{$barang['kodeBarang']}'><i class='fas fa-cart-plus mr-1'></i> Tambah ke Keranjang</button>";
@@ -154,6 +183,7 @@ class BarangDetailCarouselDenganThumbnail {
                 echo "<p><strong>Ukuran:</strong> <span>".htmlspecialchars($varian['size'])."</span></p>";
                 echo "<p><strong>Stok:</strong> ".htmlspecialchars($varian['stok'])."</p>";
                 echo "<p><strong>Harga:</strong> Rp" . number_format($varian['harga'], 0, ',', '.') . "</p>";
+                echo "<p><a href='https://wa.me/6281234567890?text=Halo,%20saya%20ingin%20bertanya%20tentang%20produk%20{$barang['namaBarang']}' target='_blank' class='btn btn-info btn-sm'><i class='fas fa-comments'></i> Chat Penjual</a></p>";
 
                 if (isset($_SESSION['level']) && strtolower($_SESSION['level']) === 'pelanggan' && $varian['stok'] > 0) {
                     echo "<div>";
@@ -168,51 +198,30 @@ class BarangDetailCarouselDenganThumbnail {
                     echo "<div class='alert alert-warning p-1 text-center'>Stok Kosong</div>";
                 }
                 echo "</div>";
-            } else {
-                if (count($varians) > 0 && $jumlahGambarVarianUnik > 1) {
-                    $hargaArray = array_column($varians, 'harga');
-                    echo "<p><strong>Harga:</strong> Rp" . number_format(min($hargaArray), 0, ',', '.') . " - Rp" . number_format(max($hargaArray), 0, ',', '.') . "</p>";
-                    echo "<p class='text-muted'>Pilih warna dan ukuran untuk melihat detail dan stok.</p>";
-                } else {
-                    echo "<p><strong>Harga:</strong> Tidak tersedia</p>";
-                }
             }
-
             echo "</div></div></div>";
         }
-
         echo '</div></div>';
 
-        if ($jumlahGambarVarianUnik > 1) {
-            echo "<div class='mt-3 d-flex justify-content-center flex-wrap'>";
-            $typeVarianShown = [];
-            foreach ($semuaGambar as $index => $item) {
-                if ($item['tipe'] === 'varian') {
-                    $typeVarian = $item['info']['typeVarian'] ?? null;
-                    if ($typeVarian && !in_array($typeVarian, $typeVarianShown)) {
-                        echo "<img src='../dist/barang/gambar/".htmlspecialchars($item['gambar'])."' class='img-thumbnail m-1' style='width: 80px; height: 80px; cursor: pointer;' onclick='goToSlide($index)'>";
-                        $typeVarianShown[] = $typeVarian;
-                    }
-                }
-            }
-            echo "</div>";
-        }
-
-        echo "<script>
-            function goToSlide(index) {
-                $('#carouselDetailBarang').carousel(index);
-            }
-            document.querySelectorAll('.varian-btn').forEach(function(btn) {
-                btn.addEventListener('click', function () {
-                    const slideIndex = parseInt(this.dataset.slide);
-                    if (!isNaN(slideIndex) && slideIndex >= 0) {
-                        $('#carouselDetailBarang').carousel(slideIndex);
-                    }
-                });
-            });
-        </script>";
-        
+        // Review Section
+        $reviews = $this->getReviewBarang($barang['kodeBarang']);
         echo "<div class='mt-4'><p><strong>Deskripsi:</strong></p><p>".nl2br(htmlspecialchars($barang['deskripsi']))."</p></div>";
+
+        echo "<div class='mt-5'>";
+        echo "<h5>Ulasan Pembeli</h5>";
+        if (count($reviews) > 0) {
+            foreach ($reviews as $rev) {
+                $stars = str_repeat("⭐", intval($rev['rating']));
+                echo "<div class='border p-2 mb-2'>";
+                echo "<strong>".htmlspecialchars($rev['nama'])."</strong> <small class='text-muted'>(".htmlspecialchars($rev['tanggal']).")</small><br>";
+                echo "<span class='text-warning'>{$stars}</span>";
+                echo "<p>".htmlspecialchars($rev['komentar'])."</p>";
+                echo "</div>";
+            }
+        } else {
+            echo "<p class='text-muted'>Belum ada ulasan untuk produk ini.</p>";
+        }
+        echo "</div>";
     }
 }
 
