@@ -159,8 +159,9 @@ class BarangDetailCarouselDenganThumbnail {
                 echo "<p><strong>Stok:</strong> <span id='info-stok-{$index}'>".htmlspecialchars($varian['stok'])."</span></p>";
                 echo "<p><strong>Harga:</strong> Rp <span id='info-harga-{$index}'>" . number_format($varian['harga'], 0, ',', '.') . "</span></p>";
 
-                // Tombol Chat Penjual
-                echo "<p><a href='https://wa.me/6281234567890?text=Halo,%20saya%20ingin%20bertanya%20tentang%20produk%20{$barang['namaBarang']}' target='_blank' class='btn btn-info btn-sm'><i class='fas fa-comments'></i> Chat Penjual</a></p>";
+                echo '<a href="chat/chat.php?barang=' . $idBarang . '" class="btn btn-success">
+                        <i class="fas fa-comments"></i> Chat Penjual
+                    </a>';
 
                 if (isset($_SESSION['level']) && strtolower($_SESSION['level']) === 'pelanggan' && $varian['stok'] > 0) {
                     echo "<div>";
@@ -179,15 +180,26 @@ class BarangDetailCarouselDenganThumbnail {
             } else if ($item['tipe'] === 'varian') {
                 $varian = $item['info'];
                 echo "<div class='mt-3'>";
+                
                 echo $buttonsPerTypeVarian[$varian['typeVarian']] ?? '';
                 echo "<p><strong>Ukuran:</strong> <span>".htmlspecialchars($varian['size'])."</span></p>";
                 echo "<p><strong>Stok:</strong> ".htmlspecialchars($varian['stok'])."</p>";
                 echo "<p><strong>Harga:</strong> Rp" . number_format($varian['harga'], 0, ',', '.') . "</p>";
-                echo "<p><a href='https://wa.me/6281234567890?text=Halo,%20saya%20ingin%20bertanya%20tentang%20produk%20{$barang['namaBarang']}' target='_blank' class='btn btn-info btn-sm'><i class='fas fa-comments'></i> Chat Penjual</a></p>";
+                if (isset($_SESSION['idPengguna'])) {
+                    echo '<a href="chat/chat.php?idBarang=<?= $idBarang ?>" class="btn btn-success">
+                            <i class="fas fa-comments"></i> Chat Penjual
+                        </a>';
+                } else { 
+                    echo '<p><a href="login.php">Login untuk chat penjual</a></p>';
+                
+                }
 
                 if (isset($_SESSION['level']) && strtolower($_SESSION['level']) === 'pelanggan' && $varian['stok'] > 0) {
                     echo "<div>";
-                        echo "<button type='button' class='btn btn-primary btn-sm tambah-keranjang-btn' data-idvarian='{$varian['idVarian']}' data-kodebarang='{$barang['kodeBarang']}'><i class='fas fa-cart-plus mr-1'></i> Tambah ke Keranjang</button>";
+                        echo "<button type='button' class='btn btn-primary btn-sm tambah-keranjang-btn' d
+                        
+                        
+                        ata-idvarian='{$varian['idVarian']}' data-kodebarang='{$barang['kodeBarang']}'><i class='fas fa-cart-plus mr-1'></i> Tambah ke Keranjang</button>";
                         echo "<form action='keranjang/proses-checkout.php' method='POST' class='d-inline ml-2'>
                                 <input type='hidden' name='pilih[]' value='{$varian['idVarian']}'>
                                 <input type='hidden' name='jumlah[{$varian['idVarian']}]' value='1'>

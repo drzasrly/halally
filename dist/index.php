@@ -160,6 +160,9 @@
                             <a class="nav-link" href="index.php?page=daftar-transaksi">
                                 <div class="sb-nav-link-icon"><i class="fas fa-list-ol"></i></div>Transaksi
                             </a>
+                            <a class="nav-link" href="index.php?page=chat">
+                                <div class="sb-nav-link-icon"><i class="fas fa-comments"></i></div>Chat
+                            </a>
                             <a class="nav-link" href="index.php?page=sertifikat-halal">
                                 <div class="sb-nav-link-icon"><i class="fas fa-certificate"></i></div>Sertifikat Halal
                             </a>
@@ -183,6 +186,9 @@
                             </a>
                             <a class="nav-link" href="index.php?page=barang">
                                 <div class="sb-nav-link-icon"><i class="fas fa-book"></i></div>Katalog Barang
+                            </a>
+                            <a class="nav-link" href="index.php?page=chat">
+                                <div class="sb-nav-link-icon"><i class="fas fa-comments"></i></div>Chat
                             </a>
                             <a class="nav-link" href="index.php?page=keranjang">
                                 <div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>
@@ -272,6 +278,7 @@
                                 case 'laporan-barang': include "laporan/barang/laporan-barang.php"; break;
                                 case 'laporan-pelanggan': include "laporan/pelanggan/laporan-pelanggan.php"; break;
                                 case 'aplikasi': include "aplikasi/index.php"; break;
+                                case 'chat': include "chat/index.php"; break;
                                 
                                 // JIKA HALAMAN TIDAK DITEMUKAN
                                 default: echo "<div class='mt-4'><center><h3>Maaf. Halaman tidak ditemukan!</h3></center></div>"; break;
