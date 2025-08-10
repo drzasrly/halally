@@ -11,7 +11,7 @@ if (!isset($_POST['kategoriBarang']) || empty($_POST['kategoriBarang'])) {
     // Query untuk mengambil 5 produk dengan total stok terbanyak
     $rekomendasi_query = mysqli_query($kon, "
         SELECT 
-            b.idBarang, b.kodeBarang, b.namaBarang,
+            b.idBarang, b.kodeBarang, b.namaBarang,  
             (SELECT gv.gambarvarian
              FROM varianbarang vb
              JOIN gambarvarian gv ON gv.idGambarVarian = vb.idGambarVarian
@@ -41,6 +41,13 @@ if (!isset($_POST['kategoriBarang']) || empty($_POST['kategoriBarang'])) {
             echo '    <div class="card card-barang h-100 shadow-sm border rounded-4 p-2 btn-detail-barang" style="cursor: pointer;" idBarang="'. $data_rek['idBarang'] .'" kodeBarang="'. $data_rek['kodeBarang'] .'">';
             echo '        <div class="img-container" style="position: relative;">';
             echo '            <img class="card-img-top product-img" src="../dist/barang/gambar/'. htmlspecialchars($data_rek['gambarBarang']) .'" alt="'. htmlspecialchars($data_rek['namaBarang']) .'">';
+            
+            // PENAMBAHAN KODE BADGE HALAL
+            if (isset($data_rek['statusSertifikat']) && $data_rek['statusSertifikat'] == 'Terverifikasi') {
+                echo '<div class="halal-badge">✓ HALAL</div>';
+            }
+            // AKHIR PENAMBAHAN
+            
             echo '        </div>';
             echo '        <div class="card-body text-center">';
             echo '            <h6 class="card-title mb-1">'. htmlspecialchars($data_rek['namaBarang']) .'</h6>';
@@ -80,7 +87,7 @@ if (isset($_POST['kategoriBarang']) && is_array($_POST['kategoriBarang'])) {
     $kategori = "0"; 
 }
 
-$sql = "SELECT b.idBarang, b.kodeBarang, b.namaBarang,
+$sql = "SELECT b.idBarang, b.kodeBarang, b.namaBarang,  
         (SELECT gv.gambarvarian
          FROM varianbarang vb
          JOIN gambarvarian gv ON gv.idGambarVarian = vb.idGambarVarian
@@ -89,7 +96,7 @@ $sql = "SELECT b.idBarang, b.kodeBarang, b.namaBarang,
          LIMIT 1) AS gambarBarang
         FROM barang b";
 
-if (isset($_POST['kategoriBarang']) && !empty($kategori)) {
+if (isset($_POST['kategoriBarang']) && !empty($kategori) && $kategori != '0') {
     $sql .= " WHERE b.kodeKategori IN ($kategori)";
 }
 
@@ -110,6 +117,7 @@ $barang_query = mysqli_query($kon, "
         b.idBarang,
         b.kodeBarang,
         b.namaBarang,
+         
         (SELECT gv.gambarvarian
          FROM varianbarang vb
          JOIN gambarvarian gv ON gv.idGambarVarian = vb.idGambarVarian
@@ -193,7 +201,11 @@ if ($barang_query) {
                                     <span>Stok Habis</span>
                                 </div>
                             <?php endif; ?>
-                        </div>
+                            
+                            <?php if (isset($data['statusSertifikat']) && $data['statusSertifikat'] == 'Terverifikasi'): ?>
+                                <div class="halal-badge">✓ HALAL</div>
+                            <?php endif; ?>
+                            </div>
                         <div class="card-body text-center">
                             <h6 class="card-title mb-1"><?= htmlspecialchars($data['namaBarang']) ?></h6>
                             <p class="text-danger fw-bold mb-0">
@@ -389,4 +401,22 @@ $(document).ready(function () {
     border-radius: 0.5rem;
     text-transform: uppercase;
 }
+
+/* PENAMBAHAN KODE CSS UNTUK BADGE HALAL */
+.halal-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #28a745; /* Warna hijau */
+    color: white;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 5px;
+    z-index: 10;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+/* AKHIR PENAMBAHAN */
+
 </style>
