@@ -1,4 +1,4 @@
-<?php
+<!-- <?php
 session_start();
 if (!isset($_SESSION['kodePengguna'])) {
     header("Location: tampilanAwal.php");
@@ -336,4 +336,4 @@ $data_aplikasi = mysqli_fetch_array($hasil_aplikasi);
             </div>
         </div>
     </body>
-</html>
+</html> -->
